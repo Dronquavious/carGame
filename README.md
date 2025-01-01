@@ -4,6 +4,11 @@ Overview
 
 This project is a 2D top-down racing car game developed using C++ and the raylib library. The game features dynamic movement, animated sprites, collision detection, and interactive gameplay elements such as health tracking, score systems, and speed boosts. It provides a fun and engaging experience while demonstrating core game development techniques.
 
+Gameplay
+
+![Gameplay Preview](resources/preview.gif)
+
+
 Features:
 
 ->Player Controls: Smooth diagonal movement of the car with keyboard input.
@@ -49,16 +54,16 @@ Compatible with Windows, macOS, and Linux.
 
 Project Structure
 
-2d-racing-car-game/
+carGame/
+
 ├── resources/            # Contains sprites and audio files
-├── src/                  # Source code
-    ├── main.cpp          # Main game source code
+
+├── src/                  # Main game source code  
+    
 ├── README.md             # Project documentation
+
 └── LICENSE               # Project license
 
-Gameplay
-
-![Gameplay Preview](resources/preview.gif)
 
 License
 
