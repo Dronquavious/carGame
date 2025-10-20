@@ -1,6 +1,19 @@
 #include <raylib.h>
-#include <ctime>
-#include <stdlib.h>
+#include <string>
+#include <filesystem>
+
+// function to get the correct path for assets
+std::string getAssetPath(const std::string& asset) {
+    std::filesystem::path currentPath = std::filesystem::current_path();
+    for (int i = 0; i < 3; ++i) { // check up to 3 levels up
+        std::filesystem::path resourcesPath = currentPath / "resources";
+        if (std::filesystem::exists(resourcesPath) && std::filesystem::is_directory(resourcesPath)) {
+            return (resourcesPath / asset).string();
+        }
+        currentPath = currentPath.parent_path();
+    }
+    return asset; // fallback to original path
+}
 
 // game states
 enum GameState
