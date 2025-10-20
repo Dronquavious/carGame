@@ -76,13 +76,27 @@ int main()
     SetTargetFPS(60);
     srand(time(NULL)); // random gen for obstacle spawns
 
-    // sound stuff
     InitAudioDevice();
-    Sound carNoise = LoadSound("resources/sounds/carNoise.wav");
-    Sound speedUpCol = LoadSound("resources/sounds/speedcol.wav");
-    Sound pickUp = LoadSound("resources/sounds/pickupCoin.wav");
-    Sound roadBlockcol = LoadSound("resources/sounds/roadBlockHit.wav");
-    Music bgMusic = LoadMusicStream("resources/sounds/marioKart.mp3");
+    Sound carNoise = LoadSound(getAssetPath("sounds/carNoise.wav").c_str());
+    Sound speedUpCol = LoadSound(getAssetPath("sounds/speedcol.wav").c_str());
+    Sound pickUp = LoadSound(getAssetPath("sounds/pickupCoin.wav").c_str());
+    Sound roadBlockcol = LoadSound(getAssetPath("sounds/roadBlockHit.wav").c_str());
+    Music bgMusic = LoadMusicStream(getAssetPath("sounds/marioKart.mp3").c_str());
+
+    // game backround
+    Texture2D gameBackround = LoadTexture(getAssetPath("images/gameBackround2.png").c_str());
+    // default car
+    Texture2D regCar = LoadTexture(getAssetPath("images/carStraight.png").c_str());
+    // car move left
+    Texture2D leftCar = LoadTexture(getAssetPath("images/carLeft.png").c_str());
+    // car move right
+    Texture2D rightCar = LoadTexture(getAssetPath("images/carRight.png").c_str());
+    // speedup prop
+    Texture2D speedUp = LoadTexture(getAssetPath("images/speedUp.png").c_str());
+    // roadBlock
+    Texture2D roadBlock = LoadTexture(getAssetPath("images/roadblock.png").c_str());
+    // apple
+    Texture2D apple = LoadTexture(getAssetPath("images/apple.png").c_str());
     bool hasPlayedSpeedSound = false;
     bool hasPlayedPickUpsound = false;
     bool hasPlayedRoadBlockSound = false;
@@ -111,7 +125,6 @@ int main()
     bool isPaused = false;
 
     // game backround
-    Texture2D gameBackround = LoadTexture("resources/images/gameBackround2.png");
     float bgY1 = 0.0f;
     float bgY2 = -GetScreenHeight();
     float bgScrollSpeed = 500.0f;
@@ -133,7 +146,6 @@ int main()
         };
 
     // default car
-    Texture2D regCar = LoadTexture("resources/images/carStraight.png");
     AnimData regCarData;
     regCarData.rec.width = regCar.width;
     regCarData.rec.height = regCar.height;
@@ -145,7 +157,6 @@ int main()
     regCarData.runningTime = 0;
     regCarData.updateTime = 0.1;
     // car move left
-    Texture2D leftCar = LoadTexture("resources/images/carLeft.png");
     AnimData leftCarData;
     leftCarData.rec.width = leftCar.width / 4;
     leftCarData.rec.height = regCar.height;
@@ -157,7 +168,6 @@ int main()
     leftCarData.runningTime = 0;
     leftCarData.updateTime = 0.1;
     // car move right
-    Texture2D rightCar = LoadTexture("resources/images/carRight.png");
     AnimData rightCarData;
     rightCarData.rec.width = rightCar.width / 3;
     rightCarData.rec.height = regCar.height;
@@ -178,7 +188,6 @@ int main()
     float rightBound = 1034.0f;
 
     // speedup prop
-    Texture2D speedUp = LoadTexture("resources/images/speedUp.png");
     AnimData speedUpData;
     speedUpData.rec.width = speedUp.width;
     speedUpData.rec.height = speedUp.height;
@@ -197,7 +206,6 @@ int main()
     speedUpData.pos = laneSpawnPositions[GetRandomValue(0, 9)]; // random spawning
 
     // roadBlock
-    Texture2D roadBlock = LoadTexture("resources/images/roadblock.png");
     AnimData roadBlockData;
     roadBlockData.rec.width = roadBlock.width;
     roadBlockData.rec.height = roadBlock.height;
@@ -211,7 +219,6 @@ int main()
     roadBlockData.pos = laneSpawnPositions[GetRandomValue(0, 9)]; // random spawning
 
     // apple
-    Texture2D apple = LoadTexture("resources/images/apple.png");
     AnimData appleData;
     appleData.rec.width = apple.width / 3;
     appleData.rec.height = apple.height;
