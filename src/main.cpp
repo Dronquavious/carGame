@@ -1,6 +1,8 @@
 #include <raylib.h>
 #include <string>
 #include <filesystem>
+#include "Player.h"
+#include "AnimData.h"
 
 // function to get the correct path for assets
 std::string getAssetPath(const std::string& asset) {
@@ -20,16 +22,6 @@ enum GameState
 {
     GAME,
     GAME_OVER
-};
-
-// everything for animation
-struct AnimData
-{
-    Rectangle rec;
-    Vector2 pos;
-    int frame;
-    float updateTime;
-    float runningTime;
 };
 
 // play sprite animation
@@ -85,18 +77,15 @@ int main()
 
     // game backround
     Texture2D gameBackround = LoadTexture(getAssetPath("images/gameBackround2.png").c_str());
-    // default car
-    Texture2D regCar = LoadTexture(getAssetPath("images/carStraight.png").c_str());
-    // car move left
-    Texture2D leftCar = LoadTexture(getAssetPath("images/carLeft.png").c_str());
-    // car move right
-    Texture2D rightCar = LoadTexture(getAssetPath("images/carRight.png").c_str());
     // speedup prop
     Texture2D speedUp = LoadTexture(getAssetPath("images/speedUp.png").c_str());
     // roadBlock
     Texture2D roadBlock = LoadTexture(getAssetPath("images/roadblock.png").c_str());
     // apple
     Texture2D apple = LoadTexture(getAssetPath("images/apple.png").c_str());
+
+    Player player(getAssetPath("images/carStraight.png"), getAssetPath("images/carLeft.png"), getAssetPath("images/carRight.png"));
+
     bool hasPlayedSpeedSound = false;
     bool hasPlayedPickUpsound = false;
     bool hasPlayedRoadBlockSound = false;
@@ -115,8 +104,6 @@ int main()
 
     // health
     float healthTimer = 2.0f;
-    int healthLength = 100;
-    int health = 100;
 
     // scoring
     int score = 0;
@@ -144,48 +131,6 @@ int main()
             {964, -144},
 
         };
-
-    // default car
-    AnimData regCarData;
-    regCarData.rec.width = regCar.width;
-    regCarData.rec.height = regCar.height;
-    regCarData.rec.x = 0;
-    regCarData.rec.y = 0;
-    regCarData.pos.x = GetScreenWidth() / 2;
-    regCarData.pos.y = 576;
-    regCarData.frame = 0;
-    regCarData.runningTime = 0;
-    regCarData.updateTime = 0.1;
-    // car move left
-    AnimData leftCarData;
-    leftCarData.rec.width = leftCar.width / 4;
-    leftCarData.rec.height = regCar.height;
-    leftCarData.rec.x = 0;
-    leftCarData.rec.y = 0;
-    leftCarData.pos.x = GetScreenWidth() / 2;
-    leftCarData.pos.y = 576;
-    leftCarData.frame = 0;
-    leftCarData.runningTime = 0;
-    leftCarData.updateTime = 0.1;
-    // car move right
-    AnimData rightCarData;
-    rightCarData.rec.width = rightCar.width / 3;
-    rightCarData.rec.height = regCar.height;
-    rightCarData.rec.x = 0;
-    rightCarData.rec.y = 0;
-    rightCarData.pos.x = GetScreenWidth() / 2;
-    rightCarData.pos.y = 576;
-    rightCarData.frame = 0;
-    rightCarData.runningTime = 0;
-    rightCarData.updateTime = 0.1;
-
-    // car movement
-    float carSpeed = 200.0f;
-    Vector2 carPosition = {(float)GetScreenWidth() / 2, 576}; // default in middle
-
-    // walls
-    float leftBound = 180.0f;
-    float rightBound = 1034.0f;
 
     // speedup prop
     AnimData speedUpData;
@@ -250,7 +195,7 @@ int main()
 
         if (isPaused)
         {
-            if (health <= 0)
+            if (player.GetHealth() <= 0)
             {
                 StopMusicStream(bgMusic);
                 StopSound(carNoise);
@@ -281,6 +226,9 @@ int main()
 
             UpdateMusicStream(bgMusic);
 
+            player.HandleInput(frameTime);
+            player.Update(frameTime);
+
             // scoring
             scoreTimer += frameTime;
             if (scoreTimer >= 1.0f)
@@ -299,32 +247,7 @@ int main()
             // score drawing
             DrawText(TextFormat("Score : %d", score), 10, 10, 20, WHITE);
 
-            // animate vehicles
-            leftCarData = updateAnimData(leftCarData, frameTime, 1);
-            rightCarData = updateAnimData(rightCarData, frameTime, 1);
-            regCarData = updateAnimData(regCarData, frameTime, 6);
-
-            // movement based on keys
-            if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))
-            {
-                if (carPosition.x > leftBound)
-                {
-                    carPosition.x -= carSpeed * frameTime; // move left
-                }
-                DrawTextureRec(leftCar, leftCarData.rec, carPosition, WHITE);
-            }
-            else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))
-            {
-                if (carPosition.x < rightBound)
-                {
-                    carPosition.x += carSpeed * frameTime; // move right
-                }
-                DrawTextureRec(rightCar, rightCarData.rec, carPosition, WHITE);
-            }
-            else
-            {
-                DrawTextureRec(regCar, regCarData.rec, carPosition, WHITE);
-            }
+            player.Draw();
 
             // rectangles for collision checking
             Rectangle speedUpRect = {
@@ -333,12 +256,7 @@ int main()
                 speedUpData.rec.width, // width of the texture
                 speedUpData.rec.height // height of the texture
             };
-            Rectangle carRect = {
-                carPosition.x,        // actual x position
-                carPosition.y,        // actual y position
-                regCarData.rec.width, // width of the car texture
-                regCarData.rec.height // height of the car texture
-            };
+            Rectangle carRect = player.GetRect();
             Rectangle roadBlockRect = {
                 roadBlockData.pos.x,     // actual x position
                 roadBlockData.pos.y,     // actual y position
@@ -370,7 +288,7 @@ int main()
             DrawTextureRec(roadBlock, roadBlockData.rec, roadBlockData.pos, WHITE);
 
             // apple prop
-            updateAnimData(appleData, frameTime, 3);
+            appleData = updateAnimData(appleData, frameTime, 3);
             appleData.pos.y += bgScrollSpeed * frameTime;
             if (appleData.pos.y > GetScreenHeight())
             {
@@ -414,13 +332,7 @@ int main()
                     hasPlayedRoadBlockSound = true; // set true after sound is played
                 }
 
-                health -= 10;
-                healthLength -= 10; // decrease health by 10 when collision happens
-                if (health < 0)
-                {
-                    health = 0;
-                    healthLength = health;
-                }
+                player.TakeDamage(10);
                 roadBlockData.pos.y = -50; // reset obstacle position after collision
             }
 
@@ -436,13 +348,7 @@ int main()
                     PlaySound(pickUp);
                     hasPlayedPickUpsound = true; // true after the sound is played
                 }
-                health += 10;
-                healthLength += 10; // increase health by 10 when collision happens
-                if (health > 100)
-                {
-                    health = 100;
-                    healthLength = health;
-                }
+                player.Heal(10);
                 appleData.pos.y = -50; // reset obstacle position after collision
             }
             if (appleData.pos.y == -50)
@@ -461,14 +367,14 @@ int main()
             }
 
             // health display
-            DrawText(TextFormat("Health: %d", health), 10, 40, 20, RED);
-            DrawRectangle(12, 60, healthLength, 25, RED);
+            DrawText(TextFormat("Health: %d", player.GetHealth()), 10, 40, 20, RED);
+            DrawRectangle(12, 60, player.GetHealth(), 25, RED);
 
             // fps display
             DrawText(TextFormat("FPS: %d", GetFPS()), 1115, 10, 40, WHITE);
 
             // toggle gamestate
-            if (health <= 0)
+            if (player.GetHealth() <= 0)
             {
                 currentState = GAME_OVER;
             }
@@ -489,9 +395,6 @@ int main()
     UnloadSound(roadBlockcol);
     UnloadMusicStream(bgMusic);
     UnloadTexture(gameBackround);
-    UnloadTexture(regCar);
-    UnloadTexture(leftCar);
-    UnloadTexture(rightCar);
     UnloadTexture(speedUp);
     UnloadTexture(roadBlock);
     UnloadTexture(apple);
