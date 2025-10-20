@@ -2,8 +2,8 @@ CXX = g++
 CXXFLAGS = -std=c++17 -I/opt/homebrew/include
 LDFLAGS = -L/opt/homebrew/lib -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
 
-main: src/main.cpp
-	$(CXX) $(CXXFLAGS) src/main.cpp -o main $(LDFLAGS)
+main: src/main.cpp src/Player.cpp
+	$(CXX) $(CXXFLAGS) src/main.cpp src/Player.cpp -o main $(LDFLAGS)
 
 clean:
 	rm -f main
