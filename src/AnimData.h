@@ -3,6 +3,15 @@
 
 #include <raylib.h>
 
+// Enum to identify the type of game object
+enum ObjectType
+{
+    NONE,
+    ROADBLOCK,
+    APPLE,
+    SPEEDUP
+};
+
 // everything for animation
 struct AnimData
 {
@@ -11,6 +20,8 @@ struct AnimData
     int frame;
     float updateTime;
     float runningTime;
+    ObjectType type; // Type of the object
+    bool active;     // Is the object currently on screen?
 };
 
 #endif // ANIMDATA_H
