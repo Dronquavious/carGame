@@ -59,14 +59,13 @@ void scrollBackground(float &bgY1, float &bgY2, float bgScrollSpeed, float frame
 
 int main()
 {
-
     int windowDimension[2] = {1280, 720};
     int windowWidth = windowDimension[0];
     int windowHeight = windowDimension[1];
 
     InitWindow(windowWidth, windowHeight, "CarGame");
     SetTargetFPS(60);
-    srand(time(NULL)); // random gen for obstacle spawns
+    srand(time(NULL)); // Seed random number generator
 
     InitAudioDevice();
     Sound carNoise = LoadSound(getAssetPath("sounds/carNoise.wav").c_str());
@@ -75,20 +74,15 @@ int main()
     Sound roadBlockcol = LoadSound(getAssetPath("sounds/roadBlockHit.wav").c_str());
     Music bgMusic = LoadMusicStream(getAssetPath("sounds/marioKart.mp3").c_str());
 
-    // game backround
+    // Load textures
     Texture2D gameBackround = LoadTexture(getAssetPath("images/gameBackround2.png").c_str());
-    // speedup prop
-    Texture2D speedUp = LoadTexture(getAssetPath("images/speedUp.png").c_str());
-    // roadBlock
-    Texture2D roadBlock = LoadTexture(getAssetPath("images/roadblock.png").c_str());
-    // apple
-    Texture2D apple = LoadTexture(getAssetPath("images/apple.png").c_str());
+    Texture2D speedUpTexture = LoadTexture(getAssetPath("images/speedUp.png").c_str());
+    Texture2D roadBlockTexture = LoadTexture(getAssetPath("images/roadblock.png").c_str());
+    Texture2D appleTexture = LoadTexture(getAssetPath("images/apple.png").c_str());
 
     Player player(getAssetPath("images/carStraight.png"), getAssetPath("images/carLeft.png"), getAssetPath("images/carRight.png"));
 
-    bool hasPlayedSpeedSound = false;
-    bool hasPlayedPickUpsound = false;
-    bool hasPlayedRoadBlockSound = false;
+    // Sound settings
     SetSoundVolume(carNoise, 0.10f);
     SetSoundVolume(speedUpCol, 0.5f);
     SetSoundVolume(roadBlockcol, 0.5f);
@@ -96,140 +90,82 @@ int main()
     SetMusicVolume(bgMusic, 0.35f);
     PlaySound(carNoise);
 
-    // Play the background music only once
     if (!IsMusicStreamPlaying(bgMusic))
     {
         PlayMusicStream(bgMusic);
     }
 
-    // health
-    float healthTimer = 2.0f;
-
-    // scoring
+    // Game state variables
     int score = 0;
     GameState currentState = GAME;
     float scoreTimer = 0.0f;
     bool isPaused = false;
 
-    // game backround
+    // Background scrolling variables
     float bgY1 = 0.0f;
     float bgY2 = -GetScreenHeight();
-    float bgScrollSpeed = 500.0f;
-
-    // x values of lane positions
-    Vector2 laneSpawnPositions[] =
-        {
-            {239, -144},
-            {322, -144},
-            {397, -144},
-            {475, -144},
-            {557, -144},
-            {640, -144},
-            {725, -144},
-            {810, -144},
-            {885, -144},
-            {964, -144},
-
-        };
-
-    // speedup prop
-    AnimData speedUpData;
-    speedUpData.rec.width = speedUp.width;
-    speedUpData.rec.height = speedUp.height;
-    speedUpData.rec.x = 0;
-    speedUpData.rec.y = 0;
-    speedUpData.pos.x = 300;
-    speedUpData.pos.y = 500;
-    speedUpData.frame = 0;
-    speedUpData.runningTime = 0;
-    speedUpData.updateTime = 0.1;
-    // speedUp temp effect / spawning
-    float speedUpDuration = 2.0f;
-    float speedUpTimer = 0.0f;
+    float bgScrollSpeed = 700.0f;
     float originalBgScrollSpeed = bgScrollSpeed;
+
+    // Lane positions for spawning
+    Vector2 laneSpawnPositions[] = {
+        {239, -144}, {322, -144}, {397, -144}, {475, -144}, {557, -144},
+        {640, -144}, {725, -144}, {810, -144}, {885, -144}, {964, -144}};
+
+    // Object pool for dynamic spawning
+    const int maxObjects = 15;
+    AnimData objectPool[maxObjects] = {};
+
+    // Spawning timer
+    float spawnTimer = 0.0f;
+    float spawnInterval = 0.5f; // Time between spawns
+
+    // Speedup effect state
+    float speedUpDuration = 5.0f;
+    float speedUpTimer = 0.0f;
     bool isSpeedUpActive = false;
-    speedUpData.pos = laneSpawnPositions[GetRandomValue(0, 9)]; // random spawning
 
-    // roadBlock
-    AnimData roadBlockData;
-    roadBlockData.rec.width = roadBlock.width;
-    roadBlockData.rec.height = roadBlock.height;
-    roadBlockData.rec.x = 0;
-    roadBlockData.rec.y = 0;
-    roadBlockData.pos.x = 300;
-    roadBlockData.pos.y = 500;
-    roadBlockData.frame = 0;
-    roadBlockData.runningTime = 0;
-    roadBlockData.updateTime = 0.1;
-    roadBlockData.pos = laneSpawnPositions[GetRandomValue(0, 9)]; // random spawning
-
-    // apple
-    AnimData appleData;
-    appleData.rec.width = apple.width / 3;
-    appleData.rec.height = apple.height;
-    appleData.rec.x = 0;
-    appleData.rec.y = 0;
-    appleData.pos.x = 300;
-    appleData.pos.y = 500;
-    appleData.frame = 0;
-    appleData.runningTime = 0;
-    appleData.updateTime = 0.1;
-    appleData.pos = laneSpawnPositions[GetRandomValue(0, 9)]; // random spawning
-
-    // game loop
+    // Game loop
     while (!WindowShouldClose())
     {
-
         if (!IsSoundPlaying(carNoise))
         {
             PlaySound(carNoise);
         }
 
-        // pausing
         if (IsKeyPressed(KEY_P))
         {
-            isPaused = !isPaused; // toggle the paused state
+            isPaused = !isPaused;
         }
 
         BeginDrawing();
 
         if (isPaused)
         {
+            ClearBackground(BLACK);
+            const char *message;
             if (player.GetHealth() <= 0)
             {
                 StopMusicStream(bgMusic);
                 StopSound(carNoise);
-                ClearBackground(BLACK);
-                DrawText("GAME OVER", windowWidth / 2 - 100, windowHeight / 2 - 50, 40, RED);
+                message = "GAME OVER";
             }
             else
             {
-                ClearBackground(BLACK);
-
-                // get the width of the pause message
-                const char *pauseMessage = "Game Paused. Press 'P' to Resume";
-                int textWidth = MeasureText(pauseMessage, 40); // get the width of the text at font size 40
-                int textHeight = 40;                           // the height of the text (same as font size in this case)
-
-                // calculate the X and Y positions to center the text
-                int posX = (GetScreenWidth() - textWidth) / 2;
-                int posY = (GetScreenHeight() - textHeight) / 2;
-
-                // draw the pause message centered on the screen
-                DrawText(pauseMessage, posX, posY, 40, GREEN);
+                message = "Game Paused. Press 'P' to Resume";
             }
+            int textWidth = MeasureText(message, 40);
+            DrawText(message, (GetScreenWidth() - textWidth) / 2, (GetScreenHeight() - 40) / 2, 40, RED);
         }
         else
         {
-            // delta time
             float frameTime = GetFrameTime();
-
             UpdateMusicStream(bgMusic);
 
             player.HandleInput(frameTime);
             player.Update(frameTime);
 
-            // scoring
+            // Scoring
             scoreTimer += frameTime;
             if (scoreTimer >= 1.0f)
             {
@@ -237,81 +173,109 @@ int main()
                 scoreTimer = 0.0f;
             }
 
-            ClearBackground(WHITE);
-
-            // backround scrolling
+            // Background scrolling
             scrollBackground(bgY1, bgY2, bgScrollSpeed, frameTime, GetScreenHeight());
+            ClearBackground(WHITE);
             DrawTexture(gameBackround, 0, bgY1, WHITE);
             DrawTexture(gameBackround, 0, bgY2, WHITE);
 
-            // score drawing
-            DrawText(TextFormat("Score : %d", score), 10, 10, 20, WHITE);
-
             player.Draw();
 
-            // rectangles for collision checking
-            Rectangle speedUpRect = {
-                speedUpData.pos.x,     // actual x position
-                speedUpData.pos.y,     // actual y position
-                speedUpData.rec.width, // width of the texture
-                speedUpData.rec.height // height of the texture
-            };
-            Rectangle carRect = player.GetRect();
-            Rectangle roadBlockRect = {
-                roadBlockData.pos.x,     // actual x position
-                roadBlockData.pos.y,     // actual y position
-                roadBlockData.rec.width, // width of the obstacle
-                roadBlockData.rec.height // height of the obstacle
-            };
-            Rectangle appleRect = {
-                appleData.pos.x,
-                appleData.pos.y,
-                appleData.rec.width,
-                appleData.rec.height};
-
-            // speedup prop
-            speedUpData.pos.y += bgScrollSpeed * frameTime;
-            if (speedUpData.pos.y > GetScreenHeight())
+            // --- Dynamic Object Spawning ---
+            spawnTimer += frameTime;
+            if (spawnTimer >= spawnInterval)
             {
-                speedUpData.pos = laneSpawnPositions[GetRandomValue(0, 9)];
-            }
-            DrawTextureRec(speedUp, speedUpData.rec, speedUpData.pos, WHITE);
+                spawnTimer = 0.0f;
+                spawnInterval = (float)GetRandomValue(5, 25) / 10.0f; // Randomize next spawn time
 
-            // roadblock prop
-            roadBlockData.pos.y += bgScrollSpeed * frameTime;
-            if (roadBlockData.pos.y > GetScreenHeight())
-            {
-                roadBlockData.pos.y = -50;
-                roadBlockData.pos.x = laneSpawnPositions[GetRandomValue(0, 9)].x; // random spawn in one of the lanes
-            }
-
-            DrawTextureRec(roadBlock, roadBlockData.rec, roadBlockData.pos, WHITE);
-
-            // apple prop
-            appleData = updateAnimData(appleData, frameTime, 3);
-            appleData.pos.y += bgScrollSpeed * frameTime;
-            if (appleData.pos.y > GetScreenHeight())
-            {
-                appleData.pos.y = -50;
-                appleData.pos.x = laneSpawnPositions[GetRandomValue(0, 9)].x; // random spawn in one of the lanes
-            }
-
-            DrawTextureRec(apple, appleData.rec, appleData.pos, WHITE);
-
-            // check collision between car and speed-up
-            if (CheckCollisionRecs(carRect, speedUpRect))
-            {
-                if (!hasPlayedSpeedSound)
+                for (int i = 0; i < maxObjects; ++i)
                 {
-                    PlaySound(speedUpCol);
-                    hasPlayedSpeedSound = true; // true after the sound is played
+                    if (!objectPool[i].active)
+                    {
+                        objectPool[i].active = true;
+                        int lane = GetRandomValue(0, 9);
+                        objectPool[i].pos = laneSpawnPositions[lane];
+                        
+                        int objectTypeRoll = GetRandomValue(1, 100);
+                        if (objectTypeRoll <= 50) { // 50% chance for roadblock
+                            objectPool[i].type = ROADBLOCK;
+                            objectPool[i].rec = {0, 0, (float)roadBlockTexture.width, (float)roadBlockTexture.height};
+                        } else if (objectTypeRoll <= 80) { // 30% chance for apple
+                            objectPool[i].type = APPLE;
+                            objectPool[i].rec = {0, 0, (float)appleTexture.width / 3, (float)appleTexture.height};
+                            objectPool[i].updateTime = 0.1f;
+                        } else { // 20% chance for speedup
+                            objectPool[i].type = SPEEDUP;
+                            objectPool[i].rec = {0, 0, (float)speedUpTexture.width, (float)speedUpTexture.height};
+                        }
+                        break; 
+                    }
                 }
-                isSpeedUpActive = true;
-                speedUpTimer = speedUpDuration;
-                bgScrollSpeed += 25; // increase backround scroll speed
             }
 
-            // speedup effect
+            // --- Update and Draw Objects ---
+            Rectangle carRect = player.GetRect();
+            for (int i = 0; i < maxObjects; ++i)
+            {
+                if (objectPool[i].active)
+                {
+                    objectPool[i].pos.y += bgScrollSpeed * frameTime;
+
+                    // Deactivate if off-screen
+                    if (objectPool[i].pos.y > windowHeight)
+                    {
+                        objectPool[i].active = false;
+                        continue;
+                    }
+
+                    // Get object rectangle for collision
+                    Rectangle objectRect = {objectPool[i].pos.x, objectPool[i].pos.y, objectPool[i].rec.width, objectPool[i].rec.height};
+
+                    // Check for collision
+                    if (CheckCollisionRecs(carRect, objectRect))
+                    {
+                        switch (objectPool[i].type)
+                        {
+                            case ROADBLOCK:
+                                player.TakeDamage(10);
+                                PlaySound(roadBlockcol);
+                                break;
+                            case APPLE:
+                                player.Heal(10);
+                                PlaySound(pickUp);
+                                break;
+                            case SPEEDUP:
+                                if (!isSpeedUpActive) {
+                                    bgScrollSpeed += 350;
+                                }
+                                isSpeedUpActive = true;
+                                speedUpTimer = speedUpDuration;
+                                PlaySound(speedUpCol);
+                                break;
+                            default: break;
+                        }
+                        objectPool[i].active = false; // Deactivate on collision
+                    }
+
+                    // Draw object
+                    switch (objectPool[i].type)
+                    {
+                        case ROADBLOCK:
+                            DrawTextureRec(roadBlockTexture, objectPool[i].rec, objectPool[i].pos, WHITE);
+                            break;
+                        case APPLE:
+                            objectPool[i] = updateAnimData(objectPool[i], frameTime, 3);
+                            DrawTextureRec(appleTexture, objectPool[i].rec, objectPool[i].pos, WHITE);
+                            break;
+                        case SPEEDUP:
+                            DrawTextureRec(speedUpTexture, objectPool[i].rec, objectPool[i].pos, WHITE);
+                            break;
+                        default: break;
+                    }
+                }
+            }
+
+            // Handle speedup effect timer
             if (isSpeedUpActive)
             {
                 speedUpTimer -= frameTime;
@@ -319,85 +283,36 @@ int main()
                 {
                     isSpeedUpActive = false;
                     bgScrollSpeed = originalBgScrollSpeed;
-                    hasPlayedSpeedSound = false;
                 }
             }
 
-            // collision between car and roadbloack
-            if (CheckCollisionRecs(carRect, roadBlockRect))
-            {
-                if (!hasPlayedRoadBlockSound)
-                {
-                    PlaySound(roadBlockcol);
-                    hasPlayedRoadBlockSound = true; // set true after sound is played
-                }
-
-                player.TakeDamage(10);
-                roadBlockData.pos.y = -50; // reset obstacle position after collision
-            }
-
-            if (roadBlockData.pos.y == -50)
-            {
-                hasPlayedRoadBlockSound = false; //  to play again on the next collision
-            }
-
-            if (CheckCollisionRecs(carRect, appleRect))
-            {
-                if (!hasPlayedPickUpsound)
-                {
-                    PlaySound(pickUp);
-                    hasPlayedPickUpsound = true; // true after the sound is played
-                }
-                player.Heal(10);
-                appleData.pos.y = -50; // reset obstacle position after collision
-            }
-            if (appleData.pos.y == -50)
-            {
-                hasPlayedPickUpsound = false; // allow sound to play again on the next collision
-            }
-
-            if (hasPlayedPickUpsound)
-            {
-                healthTimer -= frameTime;
-                if (healthTimer <= 0.0f)
-                {
-                    healthTimer = 2.0f;
-                    hasPlayedPickUpsound = false;
-                }
-            }
-
-            // health display
+            // UI Drawing
+            DrawText(TextFormat("Score : %d", score), 10, 10, 20, WHITE);
             DrawText(TextFormat("Health: %d", player.GetHealth()), 10, 40, 20, RED);
             DrawRectangle(12, 60, player.GetHealth(), 25, RED);
-
-            // fps display
             DrawText(TextFormat("FPS: %d", GetFPS()), 1115, 10, 40, WHITE);
 
-            // toggle gamestate
+            // Game Over Check
             if (player.GetHealth() <= 0)
             {
                 currentState = GAME_OVER;
-            }
-
-            if (currentState == GAME_OVER)
-            {
-                isPaused = true; // pauses and checks if over
+                isPaused = true;
             }
         }
 
         EndDrawing();
     }
 
-    // cleanup resources
+    // Cleanup
     UnloadSound(carNoise);
     UnloadSound(speedUpCol);
     UnloadSound(pickUp);
     UnloadSound(roadBlockcol);
     UnloadMusicStream(bgMusic);
     UnloadTexture(gameBackround);
-    UnloadTexture(speedUp);
-    UnloadTexture(roadBlock);
-    UnloadTexture(apple);
+    UnloadTexture(speedUpTexture);
+    UnloadTexture(roadBlockTexture);
+    UnloadTexture(appleTexture);
 
     CloseAudioDevice();
     CloseWindow();
